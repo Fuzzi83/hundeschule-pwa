@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Hundepension PWA</title>
+  <meta name="theme-color" content="#FF9800" />
+  <!-- Assets -->
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icons/icon-192.png" sizes="192x192" />
+  <link rel="stylesheet" href="./css/app.css" />
+  <style>
+    /* Kleine Hilfen für Fehlerrahmen usw. (optional) */
+    .field-error { border: 2px solid #e53935 !important; border-radius: 6px !important; outline: none !important; }
+    .field-error-box { box-shadow: 0 0 0 2px #e53935 inset !important; border-radius: 6px !important; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Hundepension</h1>
+    <div class="muted">PWA</div>
+  </header>
+
+  <div class="container">
+    <!-- ========================= HOME ========================= -->
+    <div id="page_home" class="page">
+      <div class="grid grid-home">
+        <div class="card tile" data-target="day"><h3>Tageshunde</h3></div>
+        <div class="card tile" data-target="stay"><h3>Pensionshunde</h3></div>
+        <div class="card tile" data-target="reports"><h3>Auswertungen</h3></div>
+        <div class="card tile" data-target="admin_home"><h3>Stammdaten</h3></div>
+      </div>
+    </div>
+
+    <!-- ========================= DAY ========================= -->
+    <div id="page_day" class="page hidden">
+      <div class="space">
+        <h2>Tageshunde</h2>
+        <button class="btn ghost" data-target="home">Zurück</button>
+      </div>
+
+      <div class="card">
+        <div class="fg3">
+          <label>Besitzer
+            <select id="d_owner_sel" onchange="window.dayOwnerChanged()"></select>
+          </label>
+          <label>Datum <input id="d_date" type="date" /></label>
+          <label>Check‑in (Zeit) <input id="d_time_in" type="time" /></label>
+        </div>
+
+        <div class="divider"></div>
+        <div id="d_dogs" class="fg3"></div>
+
+        <div id="tenWrap" class="muted hidden" style="margin-top:8px">
+          <div><strong>Aktive 10er‑Karte</strong></div>
+          <div id="tenCirclesDay" class="circles" style="margin-top:4px"></div>
+          <div id="tenInfoDay" class="muted" style="margin-top:4px"></div>
+        </div>
+
+        <div class="actions-sticky">
+          <button class="btn" onclick="window.dayCheckInMulti()">Check‑in</button>
+          <button class="btn" onclick="window.openDayCheckout()">Check‑out</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Heute eingecheckt</h3>
+        <div id="dayList"></div>
+      </div>
+    </div>
+
+    <!-- Dialog: Day Checkout -->
+    <div id="dlg_day_checkout" class="dlg-wrap hidden">
+      <div class="dlg">
+        <h3>Check‑out (Tag)</h3>
+        <div id="dayCheckoutBody"></div>
+        <div class="actions-sticky">
+          <button class="btn" onclick="window.saveDayCheckout()">Speichern</button>
+          <button class="btn outline" onclick="window.closeDayCheckout()">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================= STAY ========================= -->
+    <div id="page_stay" class="page hidden">
+      <div class="space">
+        <h2>Pensionshunde</h2>
+        <button class="btn ghost" data-target="home">Zurück</button>
+      </div>
+
+      <div class="card">
+        <div class="fg3">
+          <label>Besitzer
+            <select id="ps_owner" onchange="window.stayOwnerChanged()"></select>
+          </label>
+          <label>CI‑Datum <input id="ps_in_date" type="date" /></label>
+          <label>CI‑Uhrzeit <input id="ps_in_time" type="time" /></label>
+        </div>
+
+        <div class="divider"></div>
+        <div id="ps_dogs" class="fg3"></div>
+
+        <div class="actions-sticky">
+          <button class="btn" onclick="window.stayCheckInMulti()">Check‑in</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <h3>Offene Aufenthalte</h3>
+          <label>Filter Besitzer
+            <select id="ps_owner_filter" onchange="window.renderStayList()"></select>
+          </label>
+        </div>
+        <div id="stayList"></div>
+      </div>
+    </div>
+
+    <!-- Dialog: Stay Checkout -->
+    <div id="dlg_stay_checkout" class="dlg-wrap hidden">
+      <div class="dlg">
+        <h3>Check‑out (Pension)</h3>
+        <div id="stayCheckoutBody"></div>
+        <div class="actions-sticky">
+          <button class="btn" onclick="window.saveStayCheckoutMulti()">Speichern</button>
+          <button class="btn outline" onclick="window.closeStayCheckout()">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================= REPORTS ========================= -->
+    <div id="page_reports" class="page hidden">
+      <div class="space">
+        <h2>Auswertungen</h2>
+        <button class="btn ghost" data-target="home">Zurück</button>
+      </div>
+
+      <div class="card">
+        <h3>Tages‑Buchungen</h3>
+        <div class="fg3">
+          <label>Von <input id="r_from" type="date" /></label>
+          <label>Bis <input id="r_to" type="date" /></label>
+          <label>Zahlart
+            <select id="r_method">
+              <option value="all">alle</option>
+              <option value="ten">10er‑Karte</option>
+              <option value="cash">Bar</option>
+              <option value="invoice">Rechnung</option>
+            </select>
+          </label>
+          <label>Status
+            <select id="r_status">
+              <option value="all">alle</option>
+              <option value="open">offen</option>
+              <option value="paid">bezahlt</option>
+            </select>
+          </label>
+        </div>
+        <div id="r_table" style="margin-top:8px"></div>
+        <div id="r_summary" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h3>Umsatz gesamt</h3>
+        <div class="fg3">
+          <label>Ab Datum <input id="rev_from" type="date" /></label>
+          <label>Typ
+            <select id="rev_type">
+              <option value="all">alle</option>
+              <option value="cards">Karten</option>
+              <option value="payments">Zahlungen</option>
+            </select>
+          </label>
+        </div>
+        <div id="rev_table" style="margin-top:8px"></div>
+        <div id="rev_summary" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h3>Konflikte</h3>
+        <div id="r_conflicts"></div>
+      </div>
+    </div>
+
+    <!-- ========================= ADMIN HOME ========================= -->
+    <div id="page_admin_home" class="page hidden">
+      <div class="space">
+        <h2>Stammdaten</h2>
+        <button class="btn ghost" data-target="home">Zurück</button>
+      </div>
+
+      <div class="grid grid-home">
+        <div class="card tile" data-target="admin_customers"><h3>Kunden</h3></div>
+        <div class="card tile" data-target="admin_prices"><h3>Preise</h3></div>
+        <div class="card tile" data-target="admin_backup"><h3>Backup</h3></div>
+        <div class="card tile" data-target="admin_trash"><h3>Papierkorb</h3></div>
+      </div>
+    </div>
+
+    <!-- ========================= ADMIN – KUNDEN ========================= -->
+    <div id="page_admin_customers" class="page hidden">
+      <div class="space">
+        <h2>Kunden</h2>
+        <button class="btn ghost" onclick="go('admin_home')">Zurück</button>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; gap:8px; align-items:center">
+          <input id="cust_search" placeholder="Suche..." oninput="renderCustomerList()" />
+          <button class="btn primary" type="button" onclick="openNewCustomer()">Neuer Kunde</button>
+          <span id="cust_kpi" class="muted"></span>
+        </div>
+      </div>
+
+      <div id="custList" style="margin-top:12px"></div>
+    </div>
+
+    <!-- ========================= ADMIN – PREISE ========================= -->
+    <div id="page_admin_prices" class="page hidden">
+      <div class="space">
+        <h2>Preise</h2>
+        <button class="btn ghost" data-target="admin_home">Zurück</button>
+      </div>
+
+      <div class="card fg3">
+        <label>Stundensatz (1. Hund) <input id="s_dayHourly" type="number" step="0.01" /></label>
+        <label>Stundensatz (2. Hund) <input id="s_dayHourlySecond" type="number" step="0.01" /></label>
+        <label>Tagessatz (1. Hund) <input id="s_dayDaily" type="number" step="0.01" /></label>
+        <label>Tagessatz (2. Hund) <input id="s_dayDailySecond" type="number" step="0.01" /></label>
+
+        <label>Sommer ab (MM‑TT) <input id="s_summerStart" placeholder="05-01" /></label>
+        <label>Winter ab (MM‑TT) <input id="s_winterStart" placeholder="10-01" /></label>
+
+        <label>10er‑Karte Größe <input id="s_tenSize" type="number" step="1" /></label>
+        <label>10er‑Karte Preis (€) <input id="s_tenPrice" type="number" step="0.01" /></label>
+
+        <label>Nacht (Sommer) <input id="s_nightSummer" type="number" step="0.01" /></label>
+        <label>Nacht (Winter) <input id="s_nightWinter" type="number" step="0.01" /></label>
+        <label>Nacht 2. Hund (Sommer) <input id="s_nightSecondSummer" type="number" step="0.01" /></label>
+        <label>Nacht 2. Hund (Winter) <input id="s_nightSecondWinter" type="number" step="0.01" /></label>
+
+        <label>Früh ab (HH:MM) <input id="s_earlyThreshold" placeholder="07:00" /></label>
+        <label>Spät ab (HH:MM) <input id="s_lateThreshold" placeholder="18:00" /></label>
+        <label>Standard‑Mittag (HH:MM) <input id="s_stdNoon" placeholder="12:00" /></label>
+
+        <div class="actions-sticky">
+          <!-- WICHTIG: genau diese ID -->
+          <button id="btn_save_settings" class="btn primary" type="button">Speichern</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================= ADMIN – BACKUP ========================= -->
+    <div id="page_admin_backup" class="page hidden">
+      <div class="space">
+        <h2>Backup</h2>
+        <button class="btn ghost" data-target="admin_home">Zurück</button>
+      </div>
+
+      <div class="card">
+        <h3>Übersicht</h3>
+        <div id="bk_stats" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h3>Schnellaktionen</h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn" onclick="exportAll()">Backup herunterladen</button>
+          <button class="btn outline" onclick="importAll()">Backup importieren (Datei)</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Ordner‑Backup (optional, Chromium)</h3>
+        <div id="bk_fs" class="muted"></div>
+      </div>
+    </div>
+
+    <!-- ========================= ADMIN – PAPIERKORB ========================= -->
+    <div id="page_admin_trash" class="page hidden">
+      <div class="space">
+        <h2>Papierkorb</h2>
+        <button class="btn ghost" data-target="admin_home">Zurück</button>
+      </div>
+
+      <div class="card">
+        <div id="trash_customers"></div>
+      </div>
+    </div>
+
+    <!-- ===== Kundendialog usw. bleiben unverändert (nicht erneut eingefügt) ===== -->
+  </div>
+
+  <!-- SCRIPTS -->
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

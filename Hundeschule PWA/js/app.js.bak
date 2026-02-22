@@ -1,0 +1,153 @@
+// /js/app.js – optimierte Version
+
+import { initNavigation, makeGo, show } from './core/navigation.js';
+import { renderKPIs } from './ui/kpis.js';
+import { dedupeCustomers, loadAll, setPostSaveHooks } from './core/storage.js';
+
+// MODULE IMPORTS
+import * as Day from './components/day.js';
+import * as Stay from './components/stay.js';
+import * as Reports from './components/reports.js';
+import * as AdminCustomers from './components/admin/admin-customers.js';
+import * as AdminPrices from './components/admin/admin-prices.js';
+import * as AdminBackup from './components/admin/admin-backup.js';
+import * as AdminTrash from './components/admin/admin-trash.js';
+
+
+// ------------------------------
+//   POST-SAVE HOOKS
+// ------------------------------
+setPostSaveHooks({
+  renderKPIs,
+  dedupeCustomers
+});
+
+
+// ------------------------------
+//   GLOBALE FUNKTIONEN REGISTRIEREN
+//   → notwendig für HTML onclick="..."
+// ------------------------------
+function bindGlobals() {
+
+  Object.assign(window, {
+
+    // ------------------
+    // DAY
+    // ------------------
+    renderDayPage: Day.renderDayPage,
+    dayOwnerChanged: Day.dayOwnerChanged,
+    dayCheckInMulti: Day.dayCheckInMulti,
+    renderDayList: Day.renderDayList,
+    openDayCheckout: Day.openDayCheckout,
+    closeDayCheckout: Day.closeDayCheckout,
+    saveDayCheckout: Day.saveDayCheckout,
+    onDayRowChange: Day.onDayRowChange,
+    toggleEntry: Day.toggleEntry,
+    updateTotals: Day.updateTotals,
+    updatePayVisibility: Day.updatePayVisibility,
+
+    // ------------------
+    // STAY (PENSION)
+    // ------------------
+    renderStayPage: Stay.renderStayPage,
+    stayOwnerChanged: Stay.stayOwnerChanged,
+    stayCheckInMulti: Stay.stayCheckInMulti,
+    renderStayList: Stay.renderStayList,
+    openStayCheckoutMulti: Stay.openStayCheckoutMulti,
+    closeStayCheckout: Stay.closeStayCheckout,
+    saveStayCheckoutMulti: Stay.saveStayCheckoutMulti,
+    onStayRowDateChange: Stay.onStayRowDateChange,
+    onStayRowTimeChange: Stay.onStayRowTimeChange,
+
+    // ------------------
+    // REPORTS
+    // ------------------
+    renderReports: Reports.renderReports,
+    renderRevenueAll: Reports.renderRevenueAll,
+    renderConflictReport: Reports.renderConflictReport,
+
+    // ------------------
+    // PRICE SETTINGS
+    // ------------------
+    renderSettings: AdminPrices.renderSettings,
+
+    // ------------------
+    // BACKUP & IMPORT
+    // ------------------
+    renderStats: AdminBackup.renderStats,
+    exportAll: AdminBackup.exportAll,
+    importAll: AdminBackup.importAll,
+    renderFsSection: AdminBackup.renderFsSection,
+    connectBackupFolder: AdminBackup.connectBackupFolder,
+    checkBackupFolder: AdminBackup.checkBackupFolder,
+    runFolderBackupNow: AdminBackup.runFolderBackupNow,
+    importFromEntry: AdminBackup.importFromEntry,
+
+    // ------------------
+    // ADMIN CUSTOMERS
+    // ------------------
+    renderCustomerList: AdminCustomers.renderCustomerList,
+    openCustomer: AdminCustomers.openCustomer,
+    closeCustomerDlg: AdminCustomers.closeCustomerDlg,
+    saveCustomer: AdminCustomers.saveCustomer,
+    deleteCustomer: AdminCustomers.deleteCustomer,
+
+    // Hunde-Funktionen
+    addDog: AdminCustomers.addDog,
+    deleteDog: AdminCustomers.deleteDog,
+    updateDogName: AdminCustomers.updateDogName,
+
+    // 10er-Karten
+    addTenCard: AdminCustomers.addTenCard,
+    deleteTenCard: AdminCustomers.deleteTenCard,
+
+    // ------------------
+    // TRASH (Papierkorb)
+    // ------------------
+    renderTrashPage: AdminTrash.renderTrashPage,
+    restoreCustomerFromTrash: AdminTrash.restoreCustomerFromTrash,
+    deleteCustomerPermanent: AdminTrash.deleteCustomerPermanent
+  });
+}
+
+
+// ------------------------------
+//   BOOTSTRAP (App-Start)
+// ------------------------------
+function boot() {
+
+  // Daten laden (localStorage)
+  loadAll();
+
+  // Globale Funktionen setzen
+  bindGlobals();
+
+  // Navigation aufbauen
+  window.go = makeGo({
+    renderDayPage: Day.renderDayPage,
+    renderStayPage: Stay.renderStayPage,
+    renderCustomerList: AdminCustomers.renderCustomerList,
+    renderReports: Reports.renderReports,
+    renderRevenueAll: Reports.renderRevenueAll,
+    renderConflictReport: Reports.renderConflictReport,
+    renderSettings: AdminPrices.renderSettings,
+    renderStats: AdminBackup.renderStats,
+    renderFsSection: AdminBackup.renderFsSection,
+    renderTrashPage: AdminTrash.renderTrashPage
+  });
+
+  initNavigation(window.go);
+
+  // Startseite
+  show('home');
+
+  // KPIs aktualisieren
+  renderKPIs();
+}
+
+
+// ------------------------------
+//   EVENT: DOM LOADED
+// ------------------------------
+document.addEventListener('DOMContentLoaded', boot);
+``
