@@ -10,12 +10,139 @@
   <link rel="icon" href="./icons/icon-192.png" sizes="192x192" />
   <link rel="stylesheet" href="./css/app.css" />
   <style>
-    /* Kleine Hilfen für Fehlerrahmen usw. (optional) */
+  /* --- STAMPEL UI (KREISE) --- */
+.stamp-row {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0;
+  flex-wrap: wrap;
+}
+
+.stamp {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: 0.12s ease;
+  font-weight: 500;
+}
+
+.stamp.used {
+  background: #ff9800;
+  border: 2px solid #ff9800;
+  color: white;
+}
+
+.stamp.free {
+  background: white;
+  border: 2px solid #bbb;
+  color: #666;
+}
+
+.stamp:hover {
+  transform: scale(1.15);
+}
+
+.stamp-info {
+  font-size: 13px;
+  color: #555;
+  margin-top: 4px;
+}
+.stamp-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+
+.stamp {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.12s ease, background 0.12s ease, border 0.12s ease;
+  font-weight: 500;
+}
+
+/* Gestempelt (orange Check) */
+.stamp.used {
+  background: #ff9800;
+  border: 2px solid #ff9800;
+  color: white;
+}
+
+/* Frei (grau + Zahl) */
+.stamp.free {
+  background: white;
+  border: 2px solid #bbb;
+  color: #666;
+}
+
+/* Hover */
+.stamp:hover {
+  transform: scale(1.15);
+}
+
+/* Info unter den Stempeln */
+.stamp-info {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #555;
+}
+    /* Fehlerrahmen (bestehend) */
     .field-error { border: 2px solid #e53935 !important; border-radius: 6px !important; outline: none !important; }
     .field-error-box { box-shadow: 0 0 0 2px #e53935 inset !important; border-radius: 6px !important; }
+
+    /* ========= Dialog-Layout: zentriert & overlay ========= */
+    .dlg-wrap {
+      position: fixed;
+      inset: 0; /* top/right/bottom/left: 0 */
+      display: flex;
+      align-items: center;      /* vertikal zentrieren */
+      justify-content: center;  /* horizontal zentrieren */
+      background: rgba(0,0,0,0.35); /* Overlay */
+      padding: 24px;            /* Rand, damit große Dialogs nicht am Rand kleben */
+      z-index: 1000;            /* über allem */
+    }
+    .dlg {
+      background: #fff;
+      color: #111;
+      width: min(920px, 100%); /* Kundendialog ~900px, passt sich an */
+      max-height: 90vh;
+      overflow: auto;
+      border-radius: 10px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+      padding: 16px;
+    }
+    .dlg h3 { margin-top: 0; }
+
+    /* Buttons-Zeile im Dialog bleibt sichtbar */
+    .actions-sticky {
+      position: sticky;
+      bottom: 0;
+      background: #fff;
+      padding-top: 8px;
+      margin-top: 12px;
+      border-top: 1px solid #eee;
+    }
+
+    /* Mobile: enger paddings, volle Breite */
+    @media (max-width: 640px) {
+      .dlg-wrap { padding: 12px; }
+      .dlg { width: 100%; max-height: 92vh; padding: 12px; }
+    }
   </style>
 </head>
-
 <body>
   <header>
     <h1>Hundepension</h1>
@@ -23,6 +150,7 @@
   </header>
 
   <div class="container">
+
     <!-- ========================= HOME ========================= -->
     <div id="page_home" class="page">
       <div class="grid grid-home">
@@ -50,8 +178,10 @@
         </div>
 
         <div class="divider"></div>
+
         <div id="d_dogs" class="fg3"></div>
 
+        <!-- (ALT) 10er-Karte bleibt verborgen -->
         <div id="tenWrap" class="muted hidden" style="margin-top:8px">
           <div><strong>Aktive 10er‑Karte</strong></div>
           <div id="tenCirclesDay" class="circles" style="margin-top:4px"></div>
@@ -99,6 +229,7 @@
         </div>
 
         <div class="divider"></div>
+
         <div id="ps_dogs" class="fg3"></div>
 
         <div class="actions-sticky">
@@ -144,7 +275,7 @@
           <label>Zahlart
             <select id="r_method">
               <option value="all">alle</option>
-              <option value="ten">10er‑Karte</option>
+              <option value="ten">Stundenpakete</option>
               <option value="cash">Bar</option>
               <option value="invoice">Rechnung</option>
             </select>
@@ -189,10 +320,11 @@
         <h2>Stammdaten</h2>
         <button class="btn ghost" data-target="home">Zurück</button>
       </div>
-
       <div class="grid grid-home">
         <div class="card tile" data-target="admin_customers"><h3>Kunden</h3></div>
-        <div class="card tile" data-target="admin_prices"><h3>Preise</h3></div>
+        <!-- Umbenannt -->
+        <div class="card tile" data-target="admin_prices"><h3>Stunden/Tagessätze</h3></div>
+        <div class="card tile" data-target="admin_hourpacks"><h3>Stundenpakete</h3></div>
         <div class="card tile" data-target="admin_backup"><h3>Backup</h3></div>
         <div class="card tile" data-target="admin_trash"><h3>Papierkorb</h3></div>
       </div>
@@ -216,10 +348,10 @@
       <div id="custList" style="margin-top:12px"></div>
     </div>
 
-    <!-- ========================= ADMIN – PREISE ========================= -->
+    <!-- ========================= ADMIN – STUNDEN/TAGESSÄTZE ========================= -->
     <div id="page_admin_prices" class="page hidden">
       <div class="space">
-        <h2>Preise</h2>
+        <h2>Stunden/Tagessätze</h2>
         <button class="btn ghost" data-target="admin_home">Zurück</button>
       </div>
 
@@ -232,9 +364,6 @@
         <label>Sommer ab (MM‑TT) <input id="s_summerStart" placeholder="05-01" /></label>
         <label>Winter ab (MM‑TT) <input id="s_winterStart" placeholder="10-01" /></label>
 
-        <label>10er‑Karte Größe <input id="s_tenSize" type="number" step="1" /></label>
-        <label>10er‑Karte Preis (€) <input id="s_tenPrice" type="number" step="0.01" /></label>
-
         <label>Nacht (Sommer) <input id="s_nightSummer" type="number" step="0.01" /></label>
         <label>Nacht (Winter) <input id="s_nightWinter" type="number" step="0.01" /></label>
         <label>Nacht 2. Hund (Sommer) <input id="s_nightSecondSummer" type="number" step="0.01" /></label>
@@ -244,36 +373,44 @@
         <label>Spät ab (HH:MM) <input id="s_lateThreshold" placeholder="18:00" /></label>
         <label>Standard‑Mittag (HH:MM) <input id="s_stdNoon" placeholder="12:00" /></label>
 
-        <div class="actions-sticky">
-          <!-- WICHTIG: genau diese ID -->
+        <div class="actions-sticky" style="display:flex; gap:8px; align-items:center; justify-content:space-between">
+          <button id="btn_open_hourpacks" class="btn outline" type="button">Stundenpakete verwalten</button>
           <button id="btn_save_settings" class="btn primary" type="button">Speichern</button>
         </div>
       </div>
     </div>
 
-    <!-- ========================= ADMIN – BACKUP ========================= -->
-    <div id="page_admin_backup" class="page hidden">
+    <!-- ========================= ADMIN – STUNDENPAKETE ========================= -->
+    <div id="page_admin_hourpacks" class="page hidden">
       <div class="space">
-        <h2>Backup</h2>
+        <h2>Stundenpakete</h2>
         <button class="btn ghost" data-target="admin_home">Zurück</button>
       </div>
 
-      <div class="card">
-        <h3>Übersicht</h3>
-        <div id="bk_stats" class="muted"></div>
+      <div class="toolbar" style="display:flex; gap:8px; align-items:center">
+        <button class="btn primary" id="btn_hp_new">Neues Stundenpaket</button>
+        <span id="hp_kpi" class="muted"></span>
       </div>
 
-      <div class="card">
-        <h3>Schnellaktionen</h3>
-        <div style="display:flex; gap:8px; flex-wrap:wrap">
-          <button class="btn" onclick="exportAll()">Backup herunterladen</button>
-          <button class="btn outline" onclick="importAll()">Backup importieren (Datei)</button>
+      <div id="hp_list" style="margin-top:10px"></div>
+
+      <!-- Dialog Stundenpaket -->
+      <div class="dlg-wrap hidden" id="dlg_hp" role="dialog" aria-modal="true">
+        <div class="dlg">
+          <h3>Paket</h3>
+          <div class="fg3">
+            <label> Name <input id="hp_name" type="text" autocomplete="off"></label>
+            <label> Felder (Stempel) <input id="hp_fields" type="number" min="1" step="1"></label>
+            <label> Preis (€) <input id="hp_price" type="number" min="0" step="0.01" inputmode="decimal"></label>
+            <label><input id="hp_active" type="checkbox" checked> aktiv</label>
+            <label><input id="hp_for_training" type="checkbox"> Hundetraining</label>
+            <label><input id="hp_for_pension"  type="checkbox" checked> Hundepension</label>
+          </div>
+          <div class="actions-sticky" style="display:flex; justify-content:flex-end; gap:8px">
+            <button class="btn" id="btn_hp_close">Abbrechen</button>
+            <button class="btn primary" id="btn_hp_save">Speichern</button>
+          </div>
         </div>
-      </div>
-
-      <div class="card">
-        <h3>Ordner‑Backup (optional, Chromium)</h3>
-        <div id="bk_fs" class="muted"></div>
       </div>
     </div>
 
@@ -283,16 +420,94 @@
         <h2>Papierkorb</h2>
         <button class="btn ghost" data-target="admin_home">Zurück</button>
       </div>
-
       <div class="card">
         <div id="trash_customers"></div>
       </div>
     </div>
 
-    <!-- ===== Kundendialog usw. bleiben unverändert (nicht erneut eingefügt) ===== -->
+    <!-- =============== KUNDENDIALOG =============== -->
+    <div id="dlg_customer" class="dlg-wrap hidden" role="dialog" aria-modal="true">
+      <div class="dlg" style="max-width:900px">
+        <h3 id="dlg_c_title">Neuer Kunde</h3>
+
+        <!-- Stammdaten -->
+        <div class="fg3">
+          <label> Name <input id="c_name" type="text" autocomplete="off"></label>
+          <label> MwSt.-Nummer <input id="c_taxId" type="text" autocomplete="off"></label>
+          <label> Telefon <input id="c_phone" type="tel"></label>
+          <label> E-Mail <input id="c_email" type="email"></label>
+          <label> Notfallkontakt <input id="c_emergency" type="text"></label>
+          <label> Tierarzt <input id="c_vet" type="text"></label>
+        </div>
+
+        <div class="fg4">
+          <label> Straße <input id="c_addr_street" type="text"></label>
+          <label> Nr. <input id="c_addr_no" type="text"></label>
+          <label> PLZ <input id="c_addr_zip" type="text"></label>
+          <label> Ort <input id="c_addr_city" type="text"></label>
+        </div>
+
+        <!-- Hunde -->
+        <div class="space">
+          <h4>Hunde</h4>
+          <div id="c_dogs"></div>
+          <button class="btn" type="button" onclick="addDogRow()">Hund hinzufügen</button>
+        </div>
+
+        <!-- AGB + Signatur -->
+        <div id="c_terms_wrap" class="space">
+          <label><input id="c_terms_accept" type="checkbox" onchange="requireAgbForSignature()"> AGB gelesen und akzeptiert</label>
+        </div>
+
+        <div class="space">
+          <!-- Gespeicherte Signatur (Bild) -->
+          <div id="sig_saved_wrap" style="display:none">
+            <div class="muted" style="margin-bottom:4px">Gespeicherte Unterschrift</div>
+            <img id="sig_saved_img" alt="Unterschrift" style="max-width:100%; border:1px solid #ddd; border-radius:4px">
+            <div style="margin-top:6px">
+              <button class="btn outline" id="btn_sig_delete_saved">Gespeicherte Unterschrift löschen</button>
+            </div>
+          </div>
+
+          <!-- Canvas zum Unterschreiben -->
+          <div id="sig_canvas_wrap">
+            <div class="muted" style="margin-bottom:4px">Hier unterschreiben</div>
+            <canvas id="c_signature_canvas" width="600" height="200" style="width:100%; border:1px solid #ccc; border-radius:4px; background:#fff"></canvas>
+            <div style="margin-top:6px">
+              <button class="btn" id="btn_sig_clear" type="button">Unterschrift löschen</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions-sticky" style="display:flex; justify-content:space-between; gap:8px">
+          <div>
+            <button class="btn danger" type="button" onclick="deleteCustomer()">Kunde löschen</button>
+          </div>
+          <div style="display:flex; gap:8px">
+            <button class="btn" type="button" onclick="closeCustomerDlg()">Abbrechen</button>
+            <button class="btn primary" type="button" onclick="saveCustomer()">Speichern</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ============= ENDE: KUNDENDIALOG ============= -->
+
   </div>
 
   <!-- SCRIPTS -->
   <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/components/admin/admin-hourpacks.js"></script>
+
+  <script>
+    // Auto-Render der Stundenpakete beim Öffnen
+    function __maybeRenderHourPacks() {
+      if (location.hash.replace(/^#/, '') === 'admin_hourpacks' && window.renderHourPacks) {
+        window.renderHourPacks();
+      }
+    }
+    window.addEventListener('hashchange', __maybeRenderHourPacks);
+    document.addEventListener('DOMContentLoaded', __maybeRenderHourPacks);
+  </script>
 </body>
+</html>
 </html>
