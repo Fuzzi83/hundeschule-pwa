@@ -1,131 +1,110 @@
 // /js/components/admin/admin-hourpacks.js
-// Admin-Seite: Stundenpakete – jetzt mit Checkboxen "Hundetraining" & "Hundepension"
+"use strict";
 
-import {
-  listPacks,
-  createPack,
-  updatePack,
-  deletePack,
-  getPackById,
-} from "../../core/hourpacks.js";
 import { toast, esc } from "../../core/utils.js";
+import { listPacks, createPack, updatePack, deletePack, getPackById } from "../../core/hourpacks.js";
 
-function num(v) { return Number.parseFloat(v ?? "NaN"); }
-function setv(id, v) { const el = document.getElementById(id); if (el) el.value = v ?? ""; }
-function gv(id) { return document.getElementById(id)?.value ?? ""; }
-function cbv(id) { return !!document.getElementById(id)?.checked; }
+function byId(id) { return document.getElementById(id); }
+function gv(id) { return byId(id)?.value ?? ""; }
+function setv(id, v) { const el = byId(id); if (el) el.value = (v ?? ""); }
+function cbv(id) { return !!byId(id)?.checked; }
+function setcb(id, v) { const el = byId(id); if (el) el.checked = !!v; }
+function num(v) {
+  const s = String(v ?? "").trim().replace(/\./g, "").replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
 
 let editId = null;
 
-export function renderHourPacks() {
-  const wrap = document.getElementById("hp_list");
-  if (!wrap) return;
-
-  const packs = listPacks();
-  if (packs.length === 0) {
-    wrap.innerHTML = `<div class="muted">Noch keine Stundenpakete angelegt.</div>`;
-  } else {
-    wrap.innerHTML = packs.map(p => {
-      const tags = [
-        p.forTraining ? "Hundetraining" : null,
-        p.forPension  ? "Hundepension"  : null,
-      ].filter(Boolean).join(", ") || "—";
-      return `
-        <div class="card" data-id="${p.id}" style="margin:8px 0">
-          <div><strong>${esc(p.name)}</strong></div>
-          <div>Felder: ${p.felder} · Preis: ${p.preis.toFixed(2)} € · Status: ${p.aktiv ? "aktiv" : "inaktiv"}</div>
-          <div class="muted">Freigegeben für: ${esc(tags)}</div>
-          <div style="margin-top:6px">
-            <button class="btn" data-act="edit">Bearbeiten</button>
-            <button class="btn danger" data-act="del">Löschen</button>
-          </div>
-        </div>
-      `;
-    }).join("");
+function ensurePageShell() {
+  // ✅ Falls eine alte index.html-Variante existiert (adminHourpacks), bauen wir eine kompatible Struktur nach
+  const legacyWrap = byId("adminHourpacks");
+  if (legacyWrap && !byId("btn_hp_new")) {
+    legacyWrap.innerHTML = `
+      <div class="toolbar" style="display:flex; gap:8px; align-items:center">
+        <button class="btn primary" id="btn_hp_new">Neues Stundenpaket</button>
+        <span id="hp_kpi" class="muted"></span>
+      </div>
+      <div id="hp_list" style="margin-top:10px"></div>
+    `;
   }
+}
 
-  const btnNew = document.getElementById("btn_hp_new");
-  if (btnNew && !btnNew._bound) {
-    btnNew._bound = true;
-    btnNew.addEventListener("click", openNewHourPack);
-  }
+function openDlg() {
+  const dlg = byId("dlg_hp");
+  if (!dlg) return;
+  dlg.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
 
-  wrap.querySelectorAll(".card").forEach(div => {
-    if (div._bound) return;
-    div._bound = true;
-    const id = div.dataset.id;
-    div.querySelector('[data-act="edit"]').addEventListener("click", () => openEditHourPack(id));
-    div.querySelector('[data-act="del"]').addEventListener("click", () => {
-      if (!confirm("Stundenpaket wirklich löschen?")) return;
-      doDelete(id);
-    });
-  });
-
-  const kpi = document.getElementById("hp_kpi");
-  if (kpi) kpi.textContent = `Pakete: ${packs.length}`;
+export function closeHourPackDlg() {
+  const dlg = byId("dlg_hp");
+  if (!dlg) return;
+  dlg.classList.add("hidden");
+  document.body.style.overflow = "";
+  editId = null;
 }
 
 function openNewHourPack() {
   editId = null;
+  openDlg();
+
   setv("hp_name", "");
   setv("hp_fields", "10");
   setv("hp_price", "0");
-  const cbActive     = document.getElementById("hp_active");
-  const cbTraining   = document.getElementById("hp_for_training");
-  const cbPension    = document.getElementById("hp_for_pension");
-  if (cbActive)   cbActive.checked = true;
-  if (cbTraining) cbTraining.checked = false; // Training später
-  if (cbPension)  cbPension.checked  = true;  // Pension direkt nutzbar
-  document.getElementById("dlg_hp")?.classList.remove("hidden");
+
+  setcb("hp_active", true);
+  setcb("hp_for_training", false);
+  setcb("hp_for_pension", true);
+  setcb("hp_allow_half_day", false);
 }
 
 function openEditHourPack(id) {
   const p = getPackById(id);
   if (!p) return toast("Paket nicht gefunden.");
   editId = id;
-  setv("hp_name", String(p.name || ""));
-  setv("hp_fields", String(p.felder));
-  setv("hp_price", String(p.preis));
-  const cbActive     = document.getElementById("hp_active");
-  const cbTraining   = document.getElementById("hp_for_training");
-  const cbPension    = document.getElementById("hp_for_pension");
-  if (cbActive)   cbActive.checked   = !!p.aktiv;
-  if (cbTraining) cbTraining.checked = !!p.forTraining;
-  if (cbPension)  cbPension.checked  = !!p.forPension;
-  document.getElementById("dlg_hp")?.classList.remove("hidden");
-}
+  openDlg();
 
-export function closeHourPackDlg() {
-  document.getElementById("dlg_hp")?.classList.add("hidden");
+  setv("hp_name", String(p.name || ""));
+  setv("hp_fields", String(p.felder ?? 10));
+  setv("hp_price", String(p.preis ?? 0));
+
+  setcb("hp_active", p.aktiv !== false);
+  setcb("hp_for_training", !!p.forTraining);
+  setcb("hp_for_pension", p.forPension !== false);
+  setcb("hp_allow_half_day", !!p.allowHalfDay);
 }
 
 export function saveHourPack() {
-  const name   = gv("hp_name").trim();
+  const name = String(gv("hp_name")).trim();
   const felder = Math.max(1, parseInt(gv("hp_fields"), 10) || 1);
-  const preis  = Math.max(0, num(gv("hp_price")) || 0);
-  const aktiv  = !!document.getElementById("hp_active")?.checked;
+  const preis = Math.max(0, num(gv("hp_price")));
+
+  const aktiv = cbv("hp_active");
   const forTraining = cbv("hp_for_training");
-  const forPension  = cbv("hp_for_pension");
+  const forPension = cbv("hp_for_pension");
+  const allowHalfDay = cbv("hp_allow_half_day");
 
   if (!name) {
     toast("Bitte einen Namen eingeben.");
-    document.getElementById("hp_name")?.focus();
+    byId("hp_name")?.focus();
     return;
   }
-  // Sicherheitsregel: Mindestens ein Bereich (standard: Hundepension)
   if (!forTraining && !forPension) {
     toast("Bitte mindestens einen Bereich auswählen (Hundepension oder Hundetraining).");
-    document.getElementById("hp_for_pension")?.focus();
+    byId("hp_for_pension")?.focus();
     return;
   }
 
   if (editId) {
-    updatePack(editId, { name, felder, preis, aktiv, forTraining, forPension });
+    updatePack(editId, { name, felder, preis, aktiv, forTraining, forPension, allowHalfDay });
     toast("Stundenpaket aktualisiert.");
   } else {
-    createPack({ name, felder, preis, aktiv, forTraining, forPension });
+    createPack({ name, felder, preis, aktiv, forTraining, forPension, allowHalfDay });
     toast("Stundenpaket angelegt.");
   }
+
   closeHourPackDlg();
   renderHourPacks();
 }
@@ -139,22 +118,98 @@ function doDelete(id) {
   }
 }
 
-// Dialog-Buttons (einmal binden)
-(function init() {
-  const btnSave = document.getElementById("btn_hp_save");
-  if (btnSave && !btnSave._bound) {
-    btnSave._bound = true;
-    btnSave.addEventListener("click", saveHourPack);
+function rowHTML(p) {
+  const tags = [
+    p.forTraining ? "Hundetraining" : null,
+    p.forPension ? "Hundepension" : null,
+  ].filter(Boolean).join(", ") || "—";
+
+  const half = p.allowHalfDay ? " · ½ Tag: ja" : "";
+  const price = Number(p.preis || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  return `
+    <div class="card" data-id="${p.id}" style="margin:8px 0; padding:12px">
+      <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start">
+        <div style="min-width:0">
+          <div style="font-weight:900">${esc(p.name || "—")}</div>
+          <div class="muted" style="font-size:12px; margin-top:4px">
+            Felder: ${Number(p.felder || 0)} · Preis: ${price} € · Status: ${p.aktiv ? "aktiv" : "inaktiv"}${half}
+          </div>
+          <div class="muted" style="font-size:12px">Freigegeben für: ${esc(tags)}</div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn" data-act="edit" type="button">Bearbeiten</button>
+          <button class="btn outline" data-act="del" type="button">Löschen</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function bindUIOnce() {
+  const btnNew = byId("btn_hp_new");
+  if (btnNew && !btnNew._bound) {
+    btnNew._bound = true;
+    btnNew.addEventListener("click", openNewHourPack);
   }
-  const btnClose = document.getElementById("btn_hp_close");
+
+  const btnClose = byId("btn_hp_close");
   if (btnClose && !btnClose._bound) {
     btnClose._bound = true;
     btnClose.addEventListener("click", closeHourPackDlg);
   }
-})();
 
-// Für manuelle Aufrufe
+  const btnSave = byId("btn_hp_save");
+  if (btnSave && !btnSave._bound) {
+    btnSave._bound = true;
+    btnSave.addEventListener("click", saveHourPack);
+  }
+
+  // backdrop click -> schließen
+  const dlg = byId("dlg_hp");
+  if (dlg && !dlg._bound) {
+    dlg._bound = true;
+    dlg.addEventListener("click", (e) => {
+      if (e.target === dlg) closeHourPackDlg();
+    });
+  }
+
+  // kompatibel zu index.html inline onclick="window.saveHourPack()"
+  window.saveHourPack = saveHourPack;
+  window.closeHourPackDlg = closeHourPackDlg;
+}
+
+export function renderHourPacks() {
+  ensurePageShell();
+  bindUIOnce();
+
+  const wrap = byId("hp_list");
+  if (!wrap) return;
+
+  const packs = listPacks({ includeInactive: true }) || [];
+
+  const kpi = byId("hp_kpi");
+  if (kpi) kpi.textContent = `Pakete: ${packs.length}`;
+
+  if (packs.length === 0) {
+    wrap.innerHTML = `<div class="muted">Noch keine Stundenpakete angelegt.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = packs.map(rowHTML).join("");
+
+  wrap.querySelectorAll(".card").forEach(div => {
+    if (div._bound) return;
+    div._bound = true;
+
+    const id = div.dataset.id;
+    div.querySelector('[data-act="edit"]')?.addEventListener("click", () => openEditHourPack(id));
+    div.querySelector('[data-act="del"]')?.addEventListener("click", () => {
+      if (!confirm("Stundenpaket wirklich löschen?")) return;
+      doDelete(id);
+    });
+  });
+}
+
+// ✅ exakt das, was index.html erwartet
 window.renderHourPacks = renderHourPacks;
-window.openNewHourPack = openNewHourPack;
-window.closeHourPackDlg = closeHourPackDlg;
-window.saveHourPack = saveHourPack;

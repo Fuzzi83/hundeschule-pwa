@@ -1,5 +1,5 @@
-// /js/core/storage.js
-// Zentrale Persistenz (localStorage) für Hundepension PWA
+// js/core/storage.js
+// Persistenz (localStorage) für Hundeschule / Hundepension PWA
 // Exportiert: settings, customers, visits, stays, *_Trash, appMeta, saveAll, getCustomerById
 
 const LS_KEY = "hp_store_v1";
@@ -16,7 +16,7 @@ const DEFAULT_SETTINGS = {
   summerStart: "05-01",
   winterStart: "10-01",
 
-  // 10er-Karte
+  // 10er-Karte (legacy)
   tenSize: 10,
   tenPrice: 0,
 
@@ -34,7 +34,13 @@ const DEFAULT_SETTINGS = {
   earlyFeeSummer: 0,
   lateFeeSummer: 0,
   earlyFeeWinter: 0,
-  lateFeeWinter: 0
+  lateFeeWinter: 0,
+
+  // ✅ Stundenpakete (heutige Struktur)
+  hourPacks: [],
+
+  // optional für Training (wird von training.js genutzt)
+  trainings: []
 };
 
 const DEFAULT_APP_META = {
@@ -53,14 +59,15 @@ export const stays = [];
 export const customersTrash = [];
 export const visitsTrash = [];
 export const staysTrash = [];
-export const appMeta = {}; // <— wichtig für admin-backup.js
+export const appMeta = {}; // wichtig für admin-backup.js
+
+function isArr(x) { return Array.isArray(x); }
 
 // ---------- Laden aus localStorage ----------
 (function loadAll() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) {
-      // Defaults setzen
       Object.assign(settings, DEFAULT_SETTINGS);
       Object.assign(appMeta, DEFAULT_APP_META);
       return;
@@ -68,8 +75,30 @@ export const appMeta = {}; // <— wichtig für admin-backup.js
 
     const data = JSON.parse(raw);
 
-    Object.assign(settings, { ...DEFAULT_SETTINGS, ...(data.settings || {}) });
+    const loadedSettings =
+      (data && data.settings && typeof data.settings === "object") ? data.settings : {};
 
+    // settings mergen
+    Object.assign(settings, { ...DEFAULT_SETTINGS, ...loadedSettings });
+
+    // ✅ MIGRATION: alte Stände hatten hourPacks evtl. top-level statt in settings
+    // Beispiele: data.hourPacks oder data.hourpacks
+    const legacyPacks =
+      (isArr(data?.hourPacks) && data.hourPacks) ||
+      (isArr(data?.hourpacks) && data.hourpacks) ||
+      null;
+
+    if (legacyPacks && (!isArr(loadedSettings.hourPacks) || loadedSettings.hourPacks.length === 0)) {
+      settings.hourPacks = legacyPacks;
+    }
+
+    // ✅ MIGRATION: alte Stände hatten trainings evtl. top-level
+    const legacyTrainings = (isArr(data?.trainings) && data.trainings) ? data.trainings : null;
+    if (legacyTrainings && !isArr(loadedSettings.trainings)) {
+      settings.trainings = legacyTrainings;
+    }
+
+    // arrays laden
     (data.customers || []).forEach(x => customers.push(x));
     (data.visits || []).forEach(x => visits.push(x));
     (data.stays || []).forEach(x => stays.push(x));
@@ -79,6 +108,11 @@ export const appMeta = {}; // <— wichtig für admin-backup.js
     (data.staysTrash || []).forEach(x => staysTrash.push(x));
 
     Object.assign(appMeta, { ...DEFAULT_APP_META, ...(data.appMeta || {}) });
+
+    // Wenn Migration passiert ist, einmal speichern (damit es dauerhaft konsistent ist)
+    if (legacyPacks && isArr(settings.hourPacks) && settings.hourPacks.length) {
+      try { saveAll(); } catch {}
+    }
   } catch (e) {
     console.error("[storage] loadAll() Fehler, setze Defaults", e);
     Object.assign(settings, DEFAULT_SETTINGS);

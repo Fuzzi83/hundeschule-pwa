@@ -1,5 +1,5 @@
 // /js/components/admin/admin-trash.js
-// Papierkorb – bereinigte Version (2026-02-16)
+// Papierkorb – Render in #trashList (index.html) + Restore/Delete + Empty
 
 import {
   customersTrash,
@@ -12,56 +12,73 @@ import {
 } from "../../core/storage.js";
 import { esc, toast } from "../../core/utils.js";
 
-export function renderTrashPage() {
-  const wrap = document.getElementById("trash_customers");
-  if (!wrap) return;
+function fmtDT(iso) {
+  if (!iso) return "–";
+  try { return new Date(iso).toLocaleString("de-DE"); } catch { return "–"; }
+}
 
-  if (customersTrash.length === 0) {
+function getTrashContainer() {
+  // ✅ korrekt laut index.html: trashList
+  return (
+    document.getElementById("trashList") ||
+    // fallback für alte IDs
+    document.getElementById("trash_customers") ||
+    document.getElementById("trash_customers_list") ||
+    null
+  );
+}
+
+export function renderTrashPage() {
+  const wrap = getTrashContainer();
+  if (!wrap) {
+    console.warn("[trash] Container nicht gefunden (erwartet: #trashList).");
+    return;
+  }
+
+  const list = Array.isArray(customersTrash) ? customersTrash : [];
+
+  if (list.length === 0) {
     wrap.innerHTML = `<div class="muted">Keine gelöschten Kunden.</div>`;
     return;
   }
 
-  let html = `
+  const rows = list
+    .slice()
+    .sort((a, b) => String(b.deletedAt || "").localeCompare(String(a.deletedAt || "")));
+
+  wrap.innerHTML = `
     <table class="table">
       <tr>
         <th>Gelöscht am</th>
         <th>Kunde</th>
         <th>Aktionen</th>
       </tr>
-  `;
-
-  customersTrash
-    .slice()
-    .reverse()
-    .forEach((c) => {
-      html += `
+      ${rows.map(c => `
         <tr>
-          <td>${c.deletedAt ? new Date(c.deletedAt).toLocaleString() : "–"}</td>
-          <td>${esc(c.name || "")}</td>
-          <td>
+          <td>${fmtDT(c.deletedAt)}</td>
+          <td>${esc(c.name || "(ohne Name)")}</td>
+          <td style="white-space:nowrap">
             <button class="btn" onclick="restoreCustomerFromTrash('${c.id}')">Wiederherstellen</button>
-            <button class="btn outline" onclick="deleteCustomerPermanent('${c.id}')">Löschen</button>
+            <button class="btn outline" onclick="deleteCustomerPermanent('${c.id}')">Endgültig löschen</button>
           </td>
         </tr>
-      `;
-    });
-
-  html += `</table>`;
-  wrap.innerHTML = html;
+      `).join("")}
+    </table>
+  `;
 }
 
 export function restoreCustomerFromTrash(id) {
-  const idx = customersTrash.findIndex((c) => c.id === id);
+  const idx = customersTrash.findIndex(c => c.id === id);
   if (idx < 0) return;
 
   const c = customersTrash[idx];
   customersTrash.splice(idx, 1);
   customers.push(c);
 
-  const relV = visitsTrash.filter((v) => v.customerId === id);
-  const relS = staysTrash.filter((s) => s.customerId === id);
+  // zugehörige Einträge zurückholen
+  const relV = (visitsTrash || []).filter(v => v.customerId === id);
+  const relS = (staysTrash || []).filter(s => s.customerId === id);
 
-  // aus den Trash-Listen herausnehmen
   for (let i = visitsTrash.length - 1; i >= 0; i--) {
     if (visitsTrash[i].customerId === id) visitsTrash.splice(i, 1);
   }
@@ -69,7 +86,6 @@ export function restoreCustomerFromTrash(id) {
     if (staysTrash[i].customerId === id) staysTrash.splice(i, 1);
   }
 
-  // zurück in aktive Listen
   visits.push(...relV);
   stays.push(...relS);
 
@@ -98,7 +114,20 @@ export function deleteCustomerPermanent(id) {
   renderTrashPage();
 }
 
-/* globale Exporte */
+export function emptyTrash() {
+  if (!confirm("Papierkorb wirklich leeren?")) return;
+
+  customersTrash.splice(0, customersTrash.length);
+  visitsTrash.splice(0, visitsTrash.length);
+  staysTrash.splice(0, staysTrash.length);
+
+  saveAll();
+  toast("Papierkorb geleert.");
+  renderTrashPage();
+}
+
+/* globals */
 window.renderTrashPage = renderTrashPage;
 window.restoreCustomerFromTrash = restoreCustomerFromTrash;
 window.deleteCustomerPermanent = deleteCustomerPermanent;
+window.emptyTrash = emptyTrash;

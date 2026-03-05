@@ -1,9 +1,10 @@
+<!-- /index.html -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Hundepension PWA</title>
+  <title>Hundeschule PWA</title>
   <meta name="theme-color" content="#FF9800" />
   <!-- Assets -->
   <link rel="manifest" href="./manifest.json" />
@@ -145,8 +146,8 @@
 </head>
 <body>
   <header>
-    <h1>Hundepension</h1>
-    <div class="muted">PWA</div>
+    <h1>Hundeschule</h1>
+    <div class="muted">By Kristina Gafriller</div>
   </header>
 
   <div class="container">
@@ -156,6 +157,10 @@
       <div class="grid grid-home">
         <div class="card tile" data-target="day"><h3>Tageshunde</h3></div>
         <div class="card tile" data-target="stay"><h3>Pensionshunde</h3></div>
+
+        <!-- ✅ NEU: Hundetraining-Kachel direkt unter Hundepension -->
+        <div class="card tile" data-target="training"><h3>Hundetraining</h3></div>
+
         <div class="card tile" data-target="reports"><h3>Auswertungen</h3></div>
         <div class="card tile" data-target="admin_home"><h3>Stammdaten</h3></div>
       </div>
@@ -174,7 +179,7 @@
             <select id="d_owner_sel" onchange="window.dayOwnerChanged()"></select>
           </label>
           <label>Datum <input id="d_date" type="date" /></label>
-          <label>Check‑in (Zeit) <input id="d_time_in" type="time" /></label>
+          <label>Check-in (Zeit) <input id="d_time_in" type="time" /></label>
         </div>
 
         <div class="divider"></div>
@@ -183,19 +188,24 @@
 
         <!-- (ALT) 10er-Karte bleibt verborgen -->
         <div id="tenWrap" class="muted hidden" style="margin-top:8px">
-          <div><strong>Aktive 10er‑Karte</strong></div>
+          <div><strong>Aktive 10er-Karte</strong></div>
           <div id="tenCirclesDay" class="circles" style="margin-top:4px"></div>
           <div id="tenInfoDay" class="muted" style="margin-top:4px"></div>
         </div>
 
         <div class="actions-sticky">
-          <button class="btn" onclick="window.dayCheckInMulti()">Check‑in</button>
-          <button class="btn" onclick="window.openDayCheckout()">Check‑out</button>
+          <button class="btn" onclick="window.dayCheckInMulti()">Check-in</button>
+          <button class="btn" onclick="window.openDayCheckout()">Check-out</button>
         </div>
       </div>
 
       <div class="card">
-        <h3>Heute eingecheckt</h3>
+        <div class="row between">
+          <h3>Eingecheckte Hunde</h3>
+          <label>Filter Besitzer
+            <select id="d_owner_filter" onchange="window.renderDayList()"></select>
+          </label>
+        </div>
         <div id="dayList"></div>
       </div>
     </div>
@@ -203,12 +213,8 @@
     <!-- Dialog: Day Checkout -->
     <div id="dlg_day_checkout" class="dlg-wrap hidden">
       <div class="dlg">
-        <h3>Check‑out (Tag)</h3>
+        <h3>Check-out</h3>
         <div id="dayCheckoutBody"></div>
-        <div class="actions-sticky">
-          <button class="btn" onclick="window.saveDayCheckout()">Speichern</button>
-          <button class="btn outline" onclick="window.closeDayCheckout()">Abbrechen</button>
-        </div>
       </div>
     </div>
 
@@ -224,8 +230,8 @@
           <label>Besitzer
             <select id="ps_owner" onchange="window.stayOwnerChanged()"></select>
           </label>
-          <label>CI‑Datum <input id="ps_in_date" type="date" /></label>
-          <label>CI‑Uhrzeit <input id="ps_in_time" type="time" /></label>
+          <label>CI-Datum <input id="ps_in_date" type="date" /></label>
+          <label>CI-Uhrzeit <input id="ps_in_time" type="time" /></label>
         </div>
 
         <div class="divider"></div>
@@ -233,7 +239,7 @@
         <div id="ps_dogs" class="fg3"></div>
 
         <div class="actions-sticky">
-          <button class="btn" onclick="window.stayCheckInMulti()">Check‑in</button>
+          <button class="btn" onclick="window.stayCheckInMulti()">Check-in</button>
         </div>
       </div>
 
@@ -251,12 +257,56 @@
     <!-- Dialog: Stay Checkout -->
     <div id="dlg_stay_checkout" class="dlg-wrap hidden">
       <div class="dlg">
-        <h3>Check‑out (Pension)</h3>
+        <h3>Check-out (Pension)</h3>
         <div id="stayCheckoutBody"></div>
         <div class="actions-sticky">
           <button class="btn" onclick="window.saveStayCheckoutMulti()">Speichern</button>
           <button class="btn outline" onclick="window.closeStayCheckout()">Abbrechen</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Dialog: Training Checkout -->
+    <div id="dlg_training_checkout" class="dlg-wrap hidden">
+      <div class="dlg">
+        <h3>Check-out (Training)</h3>
+        <div id="trainingCheckoutBody"></div>
+      </div>
+    </div>
+
+    <!-- ========================= TRAINING (NEU) ========================= -->
+    <div id="page_training" class="page hidden">
+      <div class="space">
+        <h2>Hundetraining</h2>
+        <button class="btn ghost" data-target="home">Zurück</button>
+      </div>
+
+      <div class="card">
+        <div class="fg3">
+          <label>Training
+            <select id="tr_type"></select>
+          </label>
+          <label>Besitzer
+            <select id="tr_owner" onchange="window.trainingOwnerChanged && window.trainingOwnerChanged()"></select>
+          </label>
+          <label>Datum <input id="tr_date" type="date" onchange="window.renderTrainingList && window.renderTrainingList()" /></label>
+          <label>Check-in (Zeit) <input id="tr_time_in" type="time" /></label>
+        </div>
+
+        <div class="divider"></div>
+
+        <div id="tr_dogs" class="fg3"></div>
+
+        <div class="actions-sticky">
+          <button class="btn" onclick="window.trainingCheckInMulti && window.trainingCheckInMulti()">Check-in</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <h3>Offene Trainings</h3>
+        </div>
+        <div id="trainingList"></div>
       </div>
     </div>
 
@@ -268,69 +318,42 @@
       </div>
 
       <div class="card">
-        <h3>Tages‑Buchungen</h3>
-        <div class="fg3">
-          <label>Von <input id="r_from" type="date" /></label>
-          <label>Bis <input id="r_to" type="date" /></label>
-          <label>Zahlart
-            <select id="r_method">
-              <option value="all">alle</option>
-              <option value="ten">Stundenpakete</option>
-              <option value="cash">Bar</option>
-              <option value="invoice">Rechnung</option>
-            </select>
-          </label>
-          <label>Status
-            <select id="r_status">
-              <option value="all">alle</option>
-              <option value="open">offen</option>
-              <option value="paid">bezahlt</option>
-            </select>
+        <div class="row between">
+          <h3>Umsatz</h3>
+          <label>Jahr
+            <select id="rev_year" onchange="window.renderRevenue && window.renderRevenue()"></select>
           </label>
         </div>
-        <div id="r_table" style="margin-top:8px"></div>
-        <div id="r_summary" class="muted"></div>
+        <div id="revenueRoot"></div>
       </div>
 
       <div class="card">
-        <h3>Umsatz gesamt</h3>
-        <div class="fg3">
-          <label>Ab Datum <input id="rev_from" type="date" /></label>
-          <label>Typ
-            <select id="rev_type">
-              <option value="all">alle</option>
-              <option value="cards">Karten</option>
-              <option value="payments">Zahlungen</option>
-            </select>
+        <div class="row between">
+          <h3>Offene Posten</h3>
+          <label>Jahr
+            <select id="oi_year" onchange="window.renderOpenItems && window.renderOpenItems()"></select>
           </label>
         </div>
-        <div id="rev_table" style="margin-top:8px"></div>
-        <div id="rev_summary" class="muted"></div>
-      </div>
-
-      <div class="card">
-        <h3>Konflikte</h3>
-        <div id="r_conflicts"></div>
+        <div id="openItemsRoot"></div>
       </div>
     </div>
 
-    <!-- ========================= ADMIN HOME ========================= -->
+    <!-- ========================= ADMIN ========================= -->
     <div id="page_admin_home" class="page hidden">
       <div class="space">
         <h2>Stammdaten</h2>
         <button class="btn ghost" data-target="home">Zurück</button>
       </div>
+
       <div class="grid grid-home">
         <div class="card tile" data-target="admin_customers"><h3>Kunden</h3></div>
-        <!-- Umbenannt -->
-        <div class="card tile" data-target="admin_prices"><h3>Stunden/Tagessätze</h3></div>
+        <div class="card tile" data-target="admin_prices"><h3>Preise</h3></div>
         <div class="card tile" data-target="admin_hourpacks"><h3>Stundenpakete</h3></div>
-        <div class="card tile" data-target="admin_backup"><h3>Backup</h3></div>
         <div class="card tile" data-target="admin_trash"><h3>Papierkorb</h3></div>
       </div>
     </div>
 
-    <!-- ========================= ADMIN – KUNDEN ========================= -->
+    <!-- ========================= ADMIN CUSTOMERS ========================= -->
     <div id="page_admin_customers" class="page hidden">
       <div class="space">
         <h2>Kunden</h2>
@@ -351,151 +374,87 @@
     <!-- ========================= ADMIN – STUNDEN/TAGESSÄTZE ========================= -->
     <div id="page_admin_prices" class="page hidden">
       <div class="space">
-        <h2>Stunden/Tagessätze</h2>
-        <button class="btn ghost" data-target="admin_home">Zurück</button>
+        <h2>Preise</h2>
+        <button class="btn ghost" onclick="go('admin_home')">Zurück</button>
       </div>
 
-      <div class="card fg3">
-        <label>Stundensatz (1. Hund) <input id="s_dayHourly" type="number" step="0.01" /></label>
-        <label>Stundensatz (2. Hund) <input id="s_dayHourlySecond" type="number" step="0.01" /></label>
-        <label>Tagessatz (1. Hund) <input id="s_dayDaily" type="number" step="0.01" /></label>
-        <label>Tagessatz (2. Hund) <input id="s_dayDailySecond" type="number" step="0.01" /></label>
-
-        <label>Sommer ab (MM‑TT) <input id="s_summerStart" placeholder="05-01" /></label>
-        <label>Winter ab (MM‑TT) <input id="s_winterStart" placeholder="10-01" /></label>
-
-        <label>Nacht (Sommer) <input id="s_nightSummer" type="number" step="0.01" /></label>
-        <label>Nacht (Winter) <input id="s_nightWinter" type="number" step="0.01" /></label>
-        <label>Nacht 2. Hund (Sommer) <input id="s_nightSecondSummer" type="number" step="0.01" /></label>
-        <label>Nacht 2. Hund (Winter) <input id="s_nightSecondWinter" type="number" step="0.01" /></label>
-
-        <label>Früh ab (HH:MM) <input id="s_earlyThreshold" placeholder="07:00" /></label>
-        <label>Spät ab (HH:MM) <input id="s_lateThreshold" placeholder="18:00" /></label>
-        <label>Standard‑Mittag (HH:MM) <input id="s_stdNoon" placeholder="12:00" /></label>
-
-        <div class="actions-sticky" style="display:flex; gap:8px; align-items:center; justify-content:space-between">
-          <button id="btn_open_hourpacks" class="btn outline" type="button">Stundenpakete verwalten</button>
-          <button id="btn_save_settings" class="btn primary" type="button">Speichern</button>
-        </div>
-      </div>
+      <div id="adminPrices"></div>
     </div>
 
     <!-- ========================= ADMIN – STUNDENPAKETE ========================= -->
     <div id="page_admin_hourpacks" class="page hidden">
       <div class="space">
         <h2>Stundenpakete</h2>
-        <button class="btn ghost" data-target="admin_home">Zurück</button>
+        <button class="btn ghost" onclick="go('admin_home')">Zurück</button>
       </div>
 
-      <div class="toolbar" style="display:flex; gap:8px; align-items:center">
-        <button class="btn primary" id="btn_hp_new">Neues Stundenpaket</button>
-        <span id="hp_kpi" class="muted"></span>
-      </div>
-
-      <div id="hp_list" style="margin-top:10px"></div>
-
-      <!-- Dialog Stundenpaket -->
-      <div class="dlg-wrap hidden" id="dlg_hp" role="dialog" aria-modal="true">
-        <div class="dlg">
-          <h3>Paket</h3>
-          <div class="fg3">
-            <label> Name <input id="hp_name" type="text" autocomplete="off"></label>
-            <label> Felder (Stempel) <input id="hp_fields" type="number" min="1" step="1"></label>
-            <label> Preis (€) <input id="hp_price" type="number" min="0" step="0.01" inputmode="decimal"></label>
-            <label><input id="hp_active" type="checkbox" checked> aktiv</label>
-            <label><input id="hp_for_training" type="checkbox"> Hundetraining</label>
-            <label><input id="hp_for_pension"  type="checkbox" checked> Hundepension</label>
-          </div>
-          <div class="actions-sticky" style="display:flex; justify-content:flex-end; gap:8px">
-            <button class="btn" id="btn_hp_close">Abbrechen</button>
-            <button class="btn primary" id="btn_hp_save">Speichern</button>
-          </div>
-        </div>
-      </div>
+      <div id="adminHourpacks"></div>
     </div>
 
     <!-- ========================= ADMIN – PAPIERKORB ========================= -->
     <div id="page_admin_trash" class="page hidden">
       <div class="space">
         <h2>Papierkorb</h2>
-        <button class="btn ghost" data-target="admin_home">Zurück</button>
+        <button class="btn ghost" onclick="go('admin_home')">Zurück</button>
       </div>
+
       <div class="card">
-        <div id="trash_customers"></div>
+        <div class="row between">
+          <h3>Gelöschte Kunden</h3>
+          <button class="btn ghost" onclick="window.emptyTrash && window.emptyTrash()">Papierkorb leeren</button>
+        </div>
+        <div id="trashList"></div>
       </div>
     </div>
 
-    <!-- =============== KUNDENDIALOG =============== -->
-    <div id="dlg_customer" class="dlg-wrap hidden" role="dialog" aria-modal="true">
-      <div class="dlg" style="max-width:900px">
-        <h3 id="dlg_c_title">Neuer Kunde</h3>
+    <!-- ========================= HOURPACKS DIALOG ========================= -->
+    <div id="dlg_hp" role="dialog" aria-modal="true" class="dlg-wrap hidden">
+      <div class="dlg">
+        <h3>Stundenpakete</h3>
+        <div class="muted" id="hp_kpi" style="margin-bottom:8px"></div>
 
-        <!-- Stammdaten -->
-        <div class="fg3">
-          <label> Name <input id="c_name" type="text" autocomplete="off"></label>
-          <label> MwSt.-Nummer <input id="c_taxId" type="text" autocomplete="off"></label>
-          <label> Telefon <input id="c_phone" type="tel"></label>
-          <label> E-Mail <input id="c_email" type="email"></label>
-          <label> Notfallkontakt <input id="c_emergency" type="text"></label>
-          <label> Tierarzt <input id="c_vet" type="text"></label>
-        </div>
-
-        <div class="fg4">
-          <label> Straße <input id="c_addr_street" type="text"></label>
-          <label> Nr. <input id="c_addr_no" type="text"></label>
-          <label> PLZ <input id="c_addr_zip" type="text"></label>
-          <label> Ort <input id="c_addr_city" type="text"></label>
-        </div>
-
-        <!-- Hunde -->
-        <div class="space">
-          <h4>Hunde</h4>
-          <div id="c_dogs"></div>
-          <button class="btn" type="button" onclick="addDogRow()">Hund hinzufügen</button>
-        </div>
-
-        <!-- AGB + Signatur -->
-        <div id="c_terms_wrap" class="space">
-          <label><input id="c_terms_accept" type="checkbox" onchange="requireAgbForSignature()"> AGB gelesen und akzeptiert</label>
-        </div>
-
-        <div class="space">
-          <!-- Gespeicherte Signatur (Bild) -->
-          <div id="sig_saved_wrap" style="display:none">
-            <div class="muted" style="margin-bottom:4px">Gespeicherte Unterschrift</div>
-            <img id="sig_saved_img" alt="Unterschrift" style="max-width:100%; border:1px solid #ddd; border-radius:4px">
-            <div style="margin-top:6px">
-              <button class="btn outline" id="btn_sig_delete_saved">Gespeicherte Unterschrift löschen</button>
-            </div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="fg3">
+            <label>Name <input id="hp_name" type="text" /></label>
+            <label>Felder <input id="hp_fields" type="number" min="1" step="1" /></label>
+            <label>Preis (€) <input id="hp_price" type="number" min="0" step="0.01" /></label>
           </div>
 
-          <!-- Canvas zum Unterschreiben -->
-          <div id="sig_canvas_wrap">
-            <div class="muted" style="margin-bottom:4px">Hier unterschreiben</div>
-            <canvas id="c_signature_canvas" width="600" height="200" style="width:100%; border:1px solid #ccc; border-radius:4px; background:#fff"></canvas>
-            <div style="margin-top:6px">
-              <button class="btn" id="btn_sig_clear" type="button">Unterschrift löschen</button>
-            </div>
+          <div class="divider"></div>
+
+          <div class="fg3">
+            <label><input id="hp_active" type="checkbox" /> Aktiv</label>
+            <label><input id="hp_for_training" type="checkbox" /> Für Training</label>
+            <label><input id="hp_for_pension" type="checkbox" /> Für Pension</label>
+            <label><input id="hp_allow_half_day" type="checkbox" /> ½ Tag möglich</label>
+          </div>
+
+          <div class="actions-sticky">
+            <button class="btn" onclick="window.saveHourPack && window.saveHourPack()">Speichern</button>
+            <button class="btn outline" onclick="document.getElementById('dlg_hp').classList.add('hidden')">Schließen</button>
           </div>
         </div>
 
-        <div class="actions-sticky" style="display:flex; justify-content:space-between; gap:8px">
-          <div>
-            <button class="btn danger" type="button" onclick="deleteCustomer()">Kunde löschen</button>
-          </div>
-          <div style="display:flex; gap:8px">
-            <button class="btn" type="button" onclick="closeCustomerDlg()">Abbrechen</button>
-            <button class="btn primary" type="button" onclick="saveCustomer()">Speichern</button>
-          </div>
-        </div>
+        <div id="hp_list"></div>
       </div>
     </div>
-    <!-- ============= ENDE: KUNDENDIALOG ============= -->
+
+    <!-- ========================= CUSTOMER DIALOG ========================= -->
+    <div id="dlg_customer" class="dlg-wrap hidden">
+      <div class="dlg">
+        <div class="row between">
+          <h3 id="dlg_c_title">Neuer Kunde</h3>
+          <button class="btn ghost" onclick="window.closeCustomerDialog()">X</button>
+        </div>
+        <div id="dlg_c_body"></div>
+      </div>
+    </div>
 
   </div>
 
   <!-- SCRIPTS -->
   <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/components/training.js"></script>
   <script type="module" src="./js/components/admin/admin-hourpacks.js"></script>
 
   <script>
@@ -507,7 +466,32 @@
     }
     window.addEventListener('hashchange', __maybeRenderHourPacks);
     document.addEventListener('DOMContentLoaded', __maybeRenderHourPacks);
+
+    // Auto-Render Hundetraining beim Öffnen
+    function __maybeRenderTraining() {
+      if (location.hash.replace(/^#/, '') === 'training' && window.renderTrainingPage) {
+        window.renderTrainingPage();
+      }
+    }
+    window.addEventListener('hashchange', __maybeRenderTraining);
+    document.addEventListener('DOMContentLoaded', __maybeRenderTraining);
   </script>
+
+  <!-- TOAST -->
+<div id="toast" class="hidden" style="
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  background: rgba(20,20,20,0.95);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  z-index: 300000;
+  max-width: min(92vw, 720px);
+  text-align: center;
+"></div>
+
 </body>
-</html>
 </html>

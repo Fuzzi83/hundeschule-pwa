@@ -1,8 +1,9 @@
 // /js/core/hourpacks.js
 // Zentrales Repository für Stundenpakete (im settings-Objekt gespeichert)
 // Flags:
-//   forTraining -> Checkbox "Hundetraining" (vorbereitet; aktuell nicht gefiltert in Day/Stay)
+//   forTraining -> Checkbox "Hundetraining"
 //   forPension  -> Checkbox "Hundepension" (gilt für Tages- und Pensionshunde)
+//   allowHalfDay -> erlaubt 0.5 Abbuchung (Halbtage)
 
 import { settings, saveAll } from "./storage.js";
 import { genId } from "./utils.js";
@@ -12,19 +13,16 @@ function now() { return new Date().toISOString(); }
 function ensureInit() {
   if (!Array.isArray(settings.hourPacks)) settings.hourPacks = [];
 
-  // Migration v1: alte Felder forDay/forStay auf neue Flags abbilden
+  // Migration / Defaults
   settings.hourPacks.forEach(p => {
     const hadOldDay  = typeof p.forDay  !== "undefined";
     const hadOldStay = typeof p.forStay !== "undefined";
 
     if (p.forTraining === undefined && p.forPension === undefined) {
       if (hadOldDay || hadOldStay) {
-        // "Hundepension" deckt Tages- und Pensionshunde ab:
         p.forPension  = !!(p.forStay || p.forDay);
-        // Training-Flag aus forDay ableiten (später nutzbar)
         p.forTraining = !!p.forDay;
       } else {
-        // Keine Altinformationen -> Standard
         p.forTraining = false;
         p.forPension  = true;
       }
@@ -33,7 +31,9 @@ function ensureInit() {
       if (p.forPension  === undefined) p.forPension  = true;
     }
 
-    // Aufräumen
+    // ✅ neu: allowHalfDay default false
+    if (p.allowHalfDay === undefined) p.allowHalfDay = false;
+
     delete p.forDay;
     delete p.forStay;
   });
@@ -49,10 +49,6 @@ export function listPacks({ onlyActive = false, scope } = {}) {
 
   if (onlyActive) arr = arr.filter(p => p.aktiv !== false);
 
-  // Regel:
-  // - 'day'  -> nur Pakete mit forPension
-  // - 'stay' -> nur Pakete mit forPension
-  // - 'training' -> nur Pakete mit forTraining (derzeit nicht verwendet)
   if (scope === "day" || scope === "stay") {
     arr = arr.filter(p => !!p.forPension);
   } else if (scope === "training") {
@@ -81,11 +77,11 @@ export function createPack({
   name, felder, preis,
   aktiv = true,
   forTraining = false,
-  forPension = true, // Standard: Pension an
+  forPension = true,
+  allowHalfDay = false, // ✅ neu
 }) {
   ensureInit();
 
-  // Falls beides aus -> Sicherung: Pension aktivieren
   if (!forTraining && !forPension) forPension = true;
 
   const p = {
@@ -96,9 +92,11 @@ export function createPack({
     aktiv: !!aktiv,
     forTraining: !!forTraining,
     forPension:  !!forPension,
+    allowHalfDay: !!allowHalfDay, // ✅ neu
     createdAt: now(),
     updatedAt: now(),
   };
+
   settings.hourPacks.push(p);
   saveAll();
   return p;
@@ -115,6 +113,9 @@ export function updatePack(id, patch) {
   if (patch.aktiv !== undefined)  p.aktiv = !!patch.aktiv;
   if (patch.forTraining !== undefined) p.forTraining = !!patch.forTraining;
   if (patch.forPension  !== undefined) p.forPension  = !!patch.forPension;
+
+  // ✅ neu
+  if (patch.allowHalfDay !== undefined) p.allowHalfDay = !!patch.allowHalfDay;
 
   if (!p.forTraining && !p.forPension) p.forPension = true;
 

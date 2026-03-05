@@ -1,138 +1,136 @@
 // /js/components/admin/customers/signature.js
 "use strict";
 
-import { getCustomerById } from "../../core/storage.js";
-import { getEditCustomerId } from "./state.js";
+function byId(id) { return document.getElementById(id); }
 
-/** Canvas schreibschutz + Buttons für Signatur umschalten */
-export function sigSetReadonlyUI(ro) {
-  const cv = document.getElementById("c_signature_canvas");
-  const bC = document.getElementById("btn_sig_clear");
-  const bD = document.getElementById("btn_sig_delete_saved");
-  const bE = document.getElementById("btn_sig_edit");
-  if (!cv) return;
-  cv.style.pointerEvents = ro ? "none" : "auto";
-  cv.style.opacity = ro ? "0.6" : "1";
-  if (bC) bC.style.display = ro ? "none" : "inline-block";
-  if (bD) bD.style.display = ro ? "none" : "inline-block";
-  if (bE) bE.style.display = ro ? "inline-block" : "none";
-}
-
-/** Vorschau rechts neben dem Canvas aktualisieren */
-export function sigUpdatePreview() {
-  const cv = document.getElementById("c_signature_canvas");
-  const w = document.getElementById("sig_preview_wrap");
-  if (!cv || !w) return;
-
-  w.innerHTML = "";
-  const owner = getEditCustomerId() ? getCustomerById(getEditCustomerId()) : null;
-  const saved = owner && owner.signature ? owner.signature : null;
-
-  if (cv._sig && cv._sig.hasDrawing) {
-    const url = cv.toDataURL("image/png");
-    const img = document.createElement("img");
-    img.src = url; img.alt = "Signatur";
-    img.style = "max-width:100%;border:1px solid #eee;border-radius:6px";
-    w.appendChild(img);
-  } else if (saved && !cv._deleted) {
-    const img2 = document.createElement("img");
-    img2.src = saved; img2.alt = "Signatur";
-    img2.style = "max-width:100%;border:1px solid #eee;border-radius:6px";
-    w.appendChild(img2);
-  } else {
-    const d = document.createElement("div");
-    d.className = "muted";
-    d.textContent = "(noch keine)";
-    w.appendChild(d);
+function isBlankCanvas(cv) {
+  try {
+    const blank = document.createElement("canvas");
+    blank.width = cv.width; blank.height = cv.height;
+    return cv.toDataURL() === blank.toDataURL();
+  } catch {
+    return false;
   }
 }
 
-/** AGB-Haken steuert Schreibschutz des Canvas */
-export function requireAgbForSignature() {
-  const cb = document.getElementById("c_terms_accept");
-  const cv = document.getElementById("c_signature_canvas");
-  if (!cb || !cv) return;
-
-  const cust = getEditCustomerId() ? getCustomerById(getEditCustomerId()) : null;
-  const locked = cust && typeof cust.signatureLocked === "boolean" ? cust.signatureLocked : !!(cust && cust.signature);
-
-  if (!cb.checked) { sigSetReadonlyUI(true); return; }
-  if (!locked) sigSetReadonlyUI(false);
-  else sigSetReadonlyUI(true);
+function setReadonlyLook(cv, on) {
+  if (!cv) return;
+  if (on) {
+    cv.style.pointerEvents = "none";
+    cv.style.background = "#f3f3f3";
+    cv.style.opacity = "1";
+    cv.dataset.readonly = "1";
+  } else {
+    cv.style.background = "";
+    cv.dataset.readonly = "0";
+  }
 }
 
-/** Einfacher, eingebauter "Signature Pad" (ohne externe Lib) */
 export function initSignaturePad() {
-  const cv = document.getElementById("c_signature_canvas");
+  const cv = byId("c_signature_canvas");
   if (!cv || cv._padInit) return;
   cv._padInit = true;
 
   const ctx = cv.getContext("2d");
-  cv._sig = { drawing: false, hasDrawing: false };
+  let drawing = false;
 
-  function getPos(e) {
+  // ✅ Fix: korrekt skalieren (CSS-Größe vs Canvas-Auflösung)
+  const pos = (e) => {
     const r = cv.getBoundingClientRect();
-    if (e.touches && e.touches[0]) {
-      return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
-    }
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  }
+    const t = e.touches && e.touches[0];
+    const clientX = (t?.clientX ?? e.clientX);
+    const clientY = (t?.clientY ?? e.clientY);
 
-  function start(e) {
+    const xCss = clientX - r.left;
+    const yCss = clientY - r.top;
+
+    const scaleX = cv.width / r.width;
+    const scaleY = cv.height / r.height;
+
+    return { x: xCss * scaleX, y: yCss * scaleY };
+  };
+
+  const start = (e) => {
+    if (cv.style.pointerEvents === "none") return;
+    if (cv.dataset.readonly === "1") return;
     e.preventDefault();
-    cv._sig.drawing = true;
-    cv._sig.hasDrawing = true;
-    const p = getPos(e);
-    ctx.beginPath(); ctx.moveTo(p.x, p.y);
-  }
+    drawing = true;
+    const p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
 
-  function move(e) {
-    if (!cv._sig.drawing) return;
-    const p = getPos(e);
+  const move = (e) => {
+    if (!drawing) return;
+    const p = pos(e);
     ctx.lineTo(p.x, p.y);
-    ctx.strokeStyle = "#111"; ctx.lineWidth = 2;
-    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#111";
     ctx.stroke();
-  }
+  };
 
-  function end() {
-    cv._sig.drawing = false;
-    sigUpdatePreview();
-  }
+  const end = () => { drawing = false; };
 
-  // Maus
   cv.addEventListener("mousedown", start);
   cv.addEventListener("mousemove", move);
   window.addEventListener("mouseup", end);
 
-  // Touch
   cv.addEventListener("touchstart", start, { passive: false });
   cv.addEventListener("touchmove", move, { passive: false });
   window.addEventListener("touchend", end);
 
-  // Buttons (falls vorhanden)
-  const btnClear = document.getElementById("btn_sig_clear");
-  if (btnClear) {
-    btnClear.onclick = () => {
+  const clearBtn = byId("btn_sig_clear");
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
       ctx.clearRect(0, 0, cv.width, cv.height);
-      cv._sig.hasDrawing = false;
-      cv._deleted = false;
-      sigUpdatePreview();
-    };
+      setReadonlyLook(cv, false);
+      requireAgbForSignature();
+    });
   }
-  const btnDeleteSaved = document.getElementById("btn_sig_delete_saved");
-  if (btnDeleteSaved) {
-    btnDeleteSaved.onclick = () => {
-      ctx.clearRect(0, 0, cv.width, cv.height);
-      cv._sig.hasDrawing = false;
-      cv._deleted = true;
-      sigUpdatePreview();
-    };
-  }
-  const btnEdit = document.getElementById("btn_sig_edit");
-  if (btnEdit) {
-    btnEdit.onclick = () => { sigSetReadonlyUI(false); };
+}
+
+/**
+ * AGB-Regel:
+ * - Wenn AGB nicht akzeptiert: keine Eingabe möglich
+ * - Wenn akzeptiert: Eingabe möglich (außer readonly signature ist aktiv)
+ */
+export function requireAgbForSignature() {
+  const cb = byId("c_terms_accept");
+  const cv = byId("c_signature_canvas");
+  if (!cv) return;
+
+  if (cv.dataset.readonly === "1") {
+    cv.style.pointerEvents = "none";
+    cv.style.opacity = "1";
+    return;
   }
 
-  sigUpdatePreview();
+  if (cb && cb.checked) {
+    cv.style.pointerEvents = "auto";
+    cv.style.opacity = "1";
+  } else {
+    cv.style.pointerEvents = "none";
+    cv.style.opacity = ".6";
+  }
+}
+
+export function showSavedSignature(dataUrl) {
+  const cv = byId("c_signature_canvas");
+  if (!cv || !dataUrl) return;
+
+  const ctx = cv.getContext("2d");
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    setReadonlyLook(cv, true);
+  };
+  img.src = dataUrl;
+}
+
+export function signatureIsBlank() {
+  const cv = byId("c_signature_canvas");
+  if (!cv) return true;
+  return isBlankCanvas(cv);
 }
